@@ -4,32 +4,45 @@
  <h1 align="center">How-CLI</h1>
     <p align="center">A Terminal-Based Assistant for Generating Shell Commands</p>
 
-**How-CLI** is a terminal-based assistant that generates precise shell commands for any task you ask. Powered by Google Gemini’s generative AI, it provides context-aware, executable shell commands tailored to your current environment.
+**How-CLI** reads the same OAuth session as **[OpenAI Codex](https://developers.openai.com/codex/auth)** (`~/.codex/auth.json`): **Sign in with ChatGPT**. It sends prompts to **`https://chatgpt.com/backend-api/codex/responses`** (streaming Responses), matching how **[OpenClaw](https://github.com/openclaw/openclaw)** / **`@mariozechner/pi-ai`** attach Codex OAuth to the **ChatGPT backend** — **not** to `api.openai.com/v1/chat/completions` (OpenAI Platform billing).
+
+---
+
+## How this relates to OpenClaw
+
+OpenClaw documents **OpenAI Codex (ChatGPT OAuth)** as PKCE against `https://auth.openai.com/oauth/authorize`, a callback on **`http://127.0.0.1:1455/auth/callback`**, and if that port is unavailable (SSH, containers), **past the full redirect URL** into the CLI; tokens are exchanged at `https://auth.openai.com/oauth/token`. See [OpenClaw OAuth](https://github.com/openclaw/openclaw/blob/main/docs/concepts/oauth.md).
+
+**This project does not re-implement that login wizard.** Use the Codex CLI (`codex login`) or OpenClaw’s onboarding to obtain `auth.json`; How-CLI only **consumes** the cached OAuth tokens Codex wrote.
+
+---
+
+## Breaking change (v2)
+
+Gemini / `how --api-key` were removed. Pin `how-cli-assist<2` if you need the old Gemini tool.
+
+---
+
+## Prerequisites
+
+1. **[Codex CLI](https://github.com/openai/codex)** with **Sign in with ChatGPT** (`codex login`). That performs the OAuth / browser flow (or pasted redirect URL when localhost callback is unavailable), same ecosystem as OpenClaw.
+
+2. **File-backed** `auth.json` at **`$CODEX_HOME/auth.json`** (default **`~/.codex`**). Keyring-only mode is unsupported here; set Codex **`cli_auth_credentials_store = file`** if needed ([Codex authentication](https://developers.openai.com/codex/auth)).
+
+3. Treat `auth.json` as a secret (`0600`).
 
 ---
 
 ## Features
 
-- Generate **exact shell commands** based on your current working directory, OS, and available tools.
-- Context-aware: considers **files, git repositories, shell type**, and installed tools.
-- **Command history** logging for easy reference.
-- Clipboard support: copies generated commands automatically.
-- Typewriter effect for visually appealing output (optional).
-- Configurable Google Gemini API key.
-- Handles API errors, content blocks, and timeouts gracefully.
+- Commands use your **ChatGPT-backed Codex OAuth** + **Codex Responses** backend (not Platform Chat Completions).
+- **`how --history`**, **`--type`**, **`--silent`**, clipboard copy.
 
 ---
 
-### ⚠️ Disclaimer:
+### Disclaimer
 
 ```
-Yeah, I know... It’s a Gemini wrapper.
-I know it's not the next Warp AI terminal or some fancy LLM-based shell integration with auto-completion and context persistence...
-I know it's “yet another CLI tool” 
-and yes, I'm painfully aware that wrapping an API and printing stuff in the terminal isn't groundbreaking computer science...
-But here's the thing: I made How-CLI because it was fun and quick to build...
-It's not meant to change the world. It’s meant to make typing "how to do X in bash" a little more amusing..
-Think of it as a weekend hack.
+Small CLI hack — same auth family as OpenClaw Codex OAuth, thinner than running the full gateway.
 ```
 
 ## Installation
@@ -38,28 +51,21 @@ Think of it as a weekend hack.
 pip install how-cli-assist
 ```
 
-## Demo
-
-https://github.com/user-attachments/assets/25638fe5-766e-4318-928a-c3a4b7eccab0
-
 ## Quick Start
 
-Open your terminal and try:
-
 ```bash
-# Examples:
 how to create a Python virtual environment
-> python -m venv env
-
-how to list all files modified in the last 7 days
-> find . -type f -mtime -7
-
-# Show your previous questions and commands
-how --history
-
-# Set or update your Google Gemini API key
-how --api-key YOUR_GEMINI_API_KEY_HERE
+how --auth-check
 ```
+
+### Environment
+
+| Variable | Meaning |
+| -------- | ------- |
+| `CODEX_HOME` | Directory containing `auth.json` (default `~/.codex`) |
+| `HOW_MODEL` | Codex model id (default **`gpt-5.5`** in this repo). With a **ChatGPT** account, use Codex-eligible ids (for example **`gpt-5.2-codex`**, **`gpt-5.1-codex-mini`**) — not plain **`gpt-5-mini`**, which the backend rejects for this route. |
+| `HOW_CODEX_BASE_URL` | Override ChatGPT backend base (default `https://chatgpt.com/backend-api`) |
+| `HOW_CODEX_ORIGINATOR` | `originator` header (default `codex_cli_rs`, matching Codex CLI) |
 
 ## Options
 
@@ -69,9 +75,22 @@ how --api-key YOUR_GEMINI_API_KEY_HERE
 
 `--history` : Display previous questions and generated commands.
 
+`--auth-check` : Offline checks: `auth.json`, JWT expiry, resolved `chatgpt-account-id`, target Codex Responses URL.
+
 `--help` : Show help message and exit.
 
-`--api-key <API_KEY>` : Set or replace your Google Gemini API key.
+### Command on the prompt (no paste)
+
+A subprocess cannot put text into your shell’s edit buffer. Use a tiny shell helper:
+
+- **Fish:** source [`contrib/how.fish`](contrib/how.fish) — `howp` runs `how` and **`commandline -r`** loads the result on your prompt (review, then Enter).
+- **Zsh:** source [`contrib/how.zsh`](contrib/how.zsh) — run `howp …`; the command is **`print -s`**’d into history — press **↑** once and it appears on your line.
+
+```bash
+# Example (zsh): add to ~/.zshrc after adjusting the path
+source ~/exp/how/contrib/how.zsh
+howp to create a Python virtual environment   # then ↑ Enter
+```
 
 ## License
 

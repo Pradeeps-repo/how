@@ -4,13 +4,13 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "how-cli-assist"
-version = "1.0.1"
+version = "2.1.1"
 description = "Terminal assistant generating accurate shell commands"
 authors = [{ name = "Adem Kouki" }]
 readme = "README.md"
 license = {text = "MIT"}
 dependencies = [
-    "google-generativeai",
+    "httpx>=0.27.0",
     "pyperclip",
     "psutil"
 ]

@@ -23,6 +23,7 @@ Thumbs.db
 
 # Python virtual environments
 venv/
+.venv/
 .env/
 
 # Others you might want to ignore
